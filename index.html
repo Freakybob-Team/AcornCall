@@ -139,6 +139,7 @@ const chatInput = document.getElementById('chatInput');
 const muteButton = document.getElementById('muteButton');
 const videoToggleButton = document.getElementById('videoToggleButton');
 const screenShareButton = document.getElementById('screenShareButton');
+const endCall = document.getElementById('endCallButton');
 const usernameInput = document.getElementById('username');
 let localStream, conn, currentCall, isMuted = false, isVideoEnabled = true;
 let username = '';
@@ -173,7 +174,7 @@ window.onload = () => {
         usernameInput.value = username;
     }
 };
-
+ 
 
 usernameInput.addEventListener('change', () => {
     username = usernameInput.value.trim() || 'greg (no name)';
@@ -208,7 +209,6 @@ peer.on('call', call => {
     call.on('stream', stream => remoteVideo.srcObject = stream);
 });
 
-
 document.getElementById('callButton').addEventListener('click', () => {
     const callId = callIdInput.value.trim();
     if (callId && localStream) {
@@ -221,32 +221,34 @@ document.getElementById('callButton').addEventListener('click', () => {
     }
 });
 
-
 screenShareButton.addEventListener('click', async () => {
     if (isScreenSharing) {
         const tracks = localStream.getTracks();
         tracks.forEach(track => track.stop());
         startMedia();
 
-        
         const sender = currentCall.peerConnection.getSenders().find(sender => sender.track.kind === 'video');
         sender.replaceTrack(localStream.getVideoTracks()[0]);
+        
+        // Stop the remote screen share (if active)
+        currentCall.peerConnection.getReceivers().forEach(receiver => {
+            if (receiver.track.kind === 'video' && receiver.track.label.includes('screen')) {
+                receiver.track.stop();
+            }
+        });
 
         localVideo.srcObject = localStream;
-
-        screenShareButton.textContent = 'Share Screen'; 
+        screenShareButton.textContent = 'Share Screen';
     } else {
         try {
-            
             const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
 
-           
             const videoTrack = screenStream.getVideoTracks()[0];
             const sender = currentCall.peerConnection.getSenders().find(sender => sender.track.kind === 'video');
             sender.replaceTrack(videoTrack);
 
-            localStream = screenStream; 
-            localVideo.srcObject = screenStream; 
+            localStream = screenStream;
+            localVideo.srcObject = screenStream;
 
             screenShareButton.textContent = 'Stop Sharing';
         } catch (err) {
@@ -263,7 +265,6 @@ muteButton.addEventListener('click', () => {
     muteButton.textContent = isMuted ? 'Unmute' : 'Mute';
 });
 
-
 videoToggleButton.addEventListener('click', () => {
     isVideoEnabled = !isVideoEnabled;
     localVideo.style.display = isVideoEnabled ? 'block' : 'none';
@@ -279,10 +280,9 @@ videoToggleButton.addEventListener('click', () => {
         const placeholder = document.getElementById('videoPlaceholder');
         if (placeholder) placeholder.remove();
     }
-    localVideo.srcObject.getVideoTracks()[0].enabled = isVideoEnabled;
+    localStream.getVideoTracks()[0].enabled = isVideoEnabled;
     videoToggleButton.textContent = isVideoEnabled ? 'Video Off' : 'Video On';
 });
-
 
 chatInput.addEventListener('keypress', event => {
     if (event.key === 'Enter' && chatInput.value.trim() !== '') {
@@ -303,14 +303,32 @@ function addMessage(message, sender) {
         messageElement.style.color = 'lightblue';
     }
     chatMessages.appendChild(messageElement);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    chatMessages.scrollTop = chatMessages.scrollHeight; 
 }
+
+
+endCallButton.addEventListener('click', () => {
+    if (currentCall) {
+        currentCall.close();
+        remoteVideo.srcObject = null;
+    }
+
+
+    if (localStream) {
+        localStream.getVideoTracks().forEach(track => track.enabled = false);
+    }
+
+
+    peer.disconnect();
+});
 
 
 startMedia();
 
 
+
     </script>
 </body>
 </html>
+
 
