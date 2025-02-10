@@ -146,14 +146,14 @@ let localStream, conn, currentCall, isMuted = false, isVideoEnabled = true;
 let username = '';
 let isScreenSharing = false;
 
-// Sets the username cookie
+// sets the username cookie
 function setCookie(name, value, days) {
     const expires = new Date();
     expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
     document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
 }
 
-// Gets the username cookie
+// gets the username cookie
 function getCookie(name) {
     const nameEQ = name + "=";
     const ca = document.cookie.split(';');
@@ -164,7 +164,7 @@ function getCookie(name) {
     return null;
 }
 
-// Gets username from username cookie
+// gets username from username cookie
 window.onload = () => {
     const savedUsername = getCookie('username');
     if (savedUsername) {
@@ -176,13 +176,13 @@ window.onload = () => {
     }
 };
  
-// Changes username
+// changes username
 usernameInput.addEventListener('change', () => {
     username = usernameInput.value.trim() || 'greg (no name)';
     setCookie('username', username, 365);
 });
 
-// Starts video streaming
+// starts video streaming
 async function startMedia() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -192,20 +192,20 @@ async function startMedia() {
     }
 }
 
-// Alerts the user with call ID (maybe switch to a div on like a side panel?)
+// alerts the user with call ID (maybe switch to a div on like a side panel?)
 peer.on('open', id => {
     alert('Your call id: ' + id);
     if (conn) conn.send(username); 
 });
 
-// Detects if connected and sends username to other peer
+// detects if connected and sends username to other peer
 peer.on('connection', connection => {
     conn = connection;
     conn.on('data', data => addMessage(data, 'other'));
     conn.send(username);
 });
 
-// Starts call with other peer
+// starts call with other peer
 peer.on('call', call => {
     if (currentCall) currentCall.close(); 
     currentCall = call;
@@ -213,7 +213,7 @@ peer.on('call', call => {
     call.on('stream', stream => remoteVideo.srcObject = stream);
 });
 
-// Starts the call, sends username, and if a call is already connected, ends the call.
+// starts the call, sends username, and if a call is already connected, ends the call.
 document.getElementById('callButton').addEventListener('click', () => {
     const callId = callIdInput.value.trim();
     if (callId && localStream) {
@@ -226,7 +226,7 @@ document.getElementById('callButton').addEventListener('click', () => {
     }
 });
 
-// Screenshares to other peer
+// screenshares to other peer
 screenShareButton.addEventListener('click', async () => {
     if (isScreenSharing) {
         const tracks = localStream.getTracks();
@@ -265,14 +265,14 @@ screenShareButton.addEventListener('click', async () => {
     isScreenSharing = !isScreenSharing;
 });
 
-// Mutes user
+// mutes user
 muteButton.addEventListener('click', () => {
     isMuted = !isMuted;
     localStream.getAudioTracks()[0].enabled = !isMuted;
     muteButton.textContent = isMuted ? 'Unmute' : 'Mute';
 });
 
-// Disables/enables user's video
+// disables/enables user's video
 videoToggleButton.addEventListener('click', () => {
     isVideoEnabled = !isVideoEnabled;
     localVideo.style.display = isVideoEnabled ? 'block' : 'none';
@@ -292,7 +292,7 @@ videoToggleButton.addEventListener('click', () => {
     videoToggleButton.textContent = isVideoEnabled ? 'Video Off' : 'Video On';
 });
 
-// Controls messages in QuickChat
+// controls messages in QuickChat
 chatInput.addEventListener('keypress', event => {
     if (event.key === 'Enter' && chatInput.value.trim() !== '') {
         const message = username + ': ' + chatInput.value;
@@ -302,7 +302,7 @@ chatInput.addEventListener('keypress', event => {
     }
 });
 
-// Sends messages in QuickChat
+// sends messages in QuickChat
 function addMessage(message, sender) {
     const messageElement = document.createElement('div');
     if (sender === 'you') {
@@ -316,7 +316,7 @@ function addMessage(message, sender) {
     chatMessages.scrollTop = chatMessages.scrollHeight; 
 }
 
-// Ends call
+// ends call
 endCallButton.addEventListener('click', () => {
     if (currentCall) {
         currentCall.close();
@@ -332,7 +332,7 @@ endCallButton.addEventListener('click', () => {
     peer.disconnect();
 });
 
-// Starts the script
+// starts the script
 startMedia();
 </script>
 </body>
