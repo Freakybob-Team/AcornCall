@@ -138,11 +138,11 @@ const chatMessages = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
 const muteButton = document.getElementById('muteButton');
 const videoToggleButton = document.getElementById('videoToggleButton');
-const remoteVideoContainer = document.getElementById('remoteVideoContainer');
+const screenShareButton = document.getElementById('screenShareButton');
 const usernameInput = document.getElementById('username');
 let localStream, conn, currentCall, isMuted = false, isVideoEnabled = true;
 let username = '';
-
+let isScreenSharing = false;
 
 
 function setCookie(name, value, days) {
@@ -189,6 +189,7 @@ async function startMedia() {
     }
 }
 
+
 peer.on('open', id => {
     alert('Your call id: ' + id);
     if (conn) conn.send(username); 
@@ -220,6 +221,41 @@ document.getElementById('callButton').addEventListener('click', () => {
     }
 });
 
+
+screenShareButton.addEventListener('click', async () => {
+    if (isScreenSharing) {
+        const tracks = localStream.getTracks();
+        tracks.forEach(track => track.stop());
+        startMedia();
+
+        
+        const sender = currentCall.peerConnection.getSenders().find(sender => sender.track.kind === 'video');
+        sender.replaceTrack(localStream.getVideoTracks()[0]);
+
+        localVideo.srcObject = localStream;
+
+        screenShareButton.textContent = 'Share Screen'; 
+    } else {
+        try {
+            
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+
+           
+            const videoTrack = screenStream.getVideoTracks()[0];
+            const sender = currentCall.peerConnection.getSenders().find(sender => sender.track.kind === 'video');
+            sender.replaceTrack(videoTrack);
+
+            localStream = screenStream; 
+            localVideo.srcObject = screenStream; 
+
+            screenShareButton.textContent = 'Stop Sharing';
+        } catch (err) {
+            console.error('Error sharing screen: ', err);
+        }
+    }
+
+    isScreenSharing = !isScreenSharing;
+});
 
 muteButton.addEventListener('click', () => {
     isMuted = !isMuted;
@@ -277,3 +313,4 @@ startMedia();
     </script>
 </body>
 </html>
+
