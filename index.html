@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcornCall</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: linear-gradient(to right, #253739, #144506);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            backdrop-filter: blur(10px);
+        }
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 900px;
+            padding: 20px;
+            background: rgba(7, 126, 126, 0.433);
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+        }
+        h2 { color: #4c8bf5; }
+        #videoContainer {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        video {
+            width: 45%;
+            max-width: 400px;
+            border-radius: 10px;
+            border: 2px solid #fff;
+        }
+        .bottom-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            padding: 10px 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .video-placeholder {
+            width: 45%;
+            max-width: 400px;
+            height: 225px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            border: 2px solid #fff;
+            background: rgba(65, 1, 47, 0.53);
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        button {
+            padding: 12px 20px;
+            margin: 5px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+            color: white;
+        }
+        .btn-blue { background-color: #4c8bf5; }
+        .btn-pink { background-color: #ff4081; }
+        .btn-green { background-color: #3ddc97; }
+        .btn-yellow { background-color: #ffca28; }
+        .btn-red { background-color: #f44336; }
+        .chat-box {
+            position: absolute;
+            right: 20px;
+            bottom: 90px;
+            width: 250px;
+            height: 300px;
+            background: rgba(123, 15, 129, 0.863);
+            border-radius: 10px;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-input {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            border: none;
+            padding: 10px;
+            background: rgb(108, 9, 108);
+            color: white;
+        }
+        .chat-input::placeholder {
+            color: beige;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <input type="text" id="username" placeholder="Enter your username">
+        <h2>AcornCall</h2>
+        <div id="videoContainer">
+            <video id="localVideo" autoplay playsinline muted></video>
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        <input type="text" id="callId" placeholder="enter call id">
+    </div>
+    <div class="bottom-bar">
+        <button id="callButton" class="btn-blue">Call</button>
+        <button id="muteButton" class="btn-pink">Mute</button>
+        <button id="videoToggleButton" class="btn-green">Video Off</button>
+        <button id="screenShareButton" class="btn-yellow">Share Screen</button>
+        <button id="endCallButton" class="btn-red">End Call</button>
+    </div>
+    <div class="chat-box">
+        <div id="chatMessages"></div>
+        <input type="text" id="chatInput" class="chat-input" placeholder="Type a message...">
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+    <script>
+    const peer = new Peer();
+const localVideo = document.getElementById('localVideo');
+const remoteVideo = document.getElementById('remoteVideo');
+const callIdInput = document.getElementById('callId');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const muteButton = document.getElementById('muteButton');
+const videoToggleButton = document.getElementById('videoToggleButton');
+const remoteVideoContainer = document.getElementById('remoteVideoContainer');
+const usernameInput = document.getElementById('username');
+let localStream, conn, currentCall, isMuted = false, isVideoEnabled = true;
+let username = '';
+
+
+
+function setCookie(name, value, days) {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+}
+
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i].trim();
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+
+window.onload = () => {
+    const savedUsername = getCookie('username');
+    if (savedUsername) {
+        username = savedUsername;
+        usernameInput.value = username;
+    } else {
+        username = 'greg (no name)';
+        usernameInput.value = username;
+    }
+};
+
+
+usernameInput.addEventListener('change', () => {
+    username = usernameInput.value.trim() || 'greg (no name)';
+    setCookie('username', username, 365);
+});
+
+async function startMedia() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+    } catch (error) {
+        console.error('Error accessing media devices.', error);
+    }
+}
+
+peer.on('open', id => {
+    alert('Your call id: ' + id);
+    if (conn) conn.send(username); 
+});
+
+peer.on('connection', connection => {
+    conn = connection;
+    conn.on('data', data => addMessage(data, 'other'));
+    conn.send(username);
+});
+
+peer.on('call', call => {
+    if (currentCall) currentCall.close(); 
+    currentCall = call;
+    call.answer(localStream);
+    call.on('stream', stream => remoteVideo.srcObject = stream);
+});
+
+
+document.getElementById('callButton').addEventListener('click', () => {
+    const callId = callIdInput.value.trim();
+    if (callId && localStream) {
+        conn = peer.connect(callId);
+        conn.on('data', data => addMessage(data, 'other'));
+        conn.send(username);
+        if (currentCall) currentCall.close();
+        currentCall = peer.call(callId, localStream);
+        currentCall.on('stream', stream => remoteVideo.srcObject = stream);
+    }
+});
+
+
+muteButton.addEventListener('click', () => {
+    isMuted = !isMuted;
+    localStream.getAudioTracks()[0].enabled = !isMuted;
+    muteButton.textContent = isMuted ? 'Unmute' : 'Mute';
+});
+
+
+videoToggleButton.addEventListener('click', () => {
+    isVideoEnabled = !isVideoEnabled;
+    localVideo.style.display = isVideoEnabled ? 'block' : 'none';
+    if (!isVideoEnabled) {
+        if (!document.getElementById('videoPlaceholder')) {
+            const placeholder = document.createElement('div');
+            placeholder.id = 'videoPlaceholder';
+            placeholder.classList.add('video-placeholder');
+            placeholder.textContent = 'Camera Off :3';
+            localVideo.parentNode.insertBefore(placeholder, localVideo);
+        }
+    } else {
+        const placeholder = document.getElementById('videoPlaceholder');
+        if (placeholder) placeholder.remove();
+    }
+    localVideo.srcObject.getVideoTracks()[0].enabled = isVideoEnabled;
+    videoToggleButton.textContent = isVideoEnabled ? 'Video Off' : 'Video On';
+});
+
+
+chatInput.addEventListener('keypress', event => {
+    if (event.key === 'Enter' && chatInput.value.trim() !== '') {
+        const message = username + ': ' + chatInput.value;
+        addMessage(message, 'you');
+        conn.send(message);
+        chatInput.value = '';
+    }
+});
+
+function addMessage(message, sender) {
+    const messageElement = document.createElement('div');
+    if (sender === 'you') {
+        messageElement.textContent = message;
+        messageElement.style.color = 'lightgreen';
+    } else if (sender === 'other') {
+        messageElement.textContent = message; 
+        messageElement.style.color = 'lightblue';
+    }
+    chatMessages.appendChild(messageElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+
+startMedia();
+
+
+    </script>
+</body>
+</html>
