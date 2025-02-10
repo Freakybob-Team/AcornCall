@@ -130,7 +130,8 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <script>
-    const peer = new Peer();
+// define list
+const peer = new Peer();
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
 const callIdInput = document.getElementById('callId');
@@ -145,14 +146,14 @@ let localStream, conn, currentCall, isMuted = false, isVideoEnabled = true;
 let username = '';
 let isScreenSharing = false;
 
-
+// Sets the username cookie
 function setCookie(name, value, days) {
     const expires = new Date();
     expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
     document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
 }
 
-
+// Gets the username cookie
 function getCookie(name) {
     const nameEQ = name + "=";
     const ca = document.cookie.split(';');
@@ -163,7 +164,7 @@ function getCookie(name) {
     return null;
 }
 
-
+// Gets username from username cookie
 window.onload = () => {
     const savedUsername = getCookie('username');
     if (savedUsername) {
@@ -175,12 +176,13 @@ window.onload = () => {
     }
 };
  
-
+// Changes username
 usernameInput.addEventListener('change', () => {
     username = usernameInput.value.trim() || 'greg (no name)';
     setCookie('username', username, 365);
 });
 
+// Starts video streaming
 async function startMedia() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -190,18 +192,20 @@ async function startMedia() {
     }
 }
 
-
+// Alerts the user with call ID (maybe switch to a div on like a side panel?)
 peer.on('open', id => {
     alert('Your call id: ' + id);
     if (conn) conn.send(username); 
 });
 
+// Detects if connected and sends username to other peer
 peer.on('connection', connection => {
     conn = connection;
     conn.on('data', data => addMessage(data, 'other'));
     conn.send(username);
 });
 
+// Starts call with other peer
 peer.on('call', call => {
     if (currentCall) currentCall.close(); 
     currentCall = call;
@@ -209,6 +213,7 @@ peer.on('call', call => {
     call.on('stream', stream => remoteVideo.srcObject = stream);
 });
 
+// Starts the call, sends username, and if a call is already connected, ends the call.
 document.getElementById('callButton').addEventListener('click', () => {
     const callId = callIdInput.value.trim();
     if (callId && localStream) {
@@ -221,6 +226,7 @@ document.getElementById('callButton').addEventListener('click', () => {
     }
 });
 
+// Screenshares to other peer
 screenShareButton.addEventListener('click', async () => {
     if (isScreenSharing) {
         const tracks = localStream.getTracks();
